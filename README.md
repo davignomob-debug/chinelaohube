@@ -8,6 +8,15 @@ sg.Name = "AutoPlace_Brainrot"
 local Ativo = false
 local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
 
+-- // CHECA SE ESTÁ SEGURANDO BRAINROT (fica na pasta Grabbing do char)
+local function EstaSegurando()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local grabbing = char:FindFirstChild("Grabbing")
+    if not grabbing then return false end
+    return #grabbing:GetChildren() > 0
+end
+
 -- // ACHA SUA BASE PELO USERID
 local function GetMinhaBase()
     for _, base in pairs(workspace.Server.Bases:GetChildren()) do
@@ -19,7 +28,7 @@ local function GetMinhaBase()
     return nil
 end
 
--- // ACHA SLOT VAZIO NA SUA BASE (prompt com ActionText "place")
+-- // ACHA SLOT VAZIO NA SUA BASE
 local function GetSlotVazio(base)
     for _, slot in pairs(base.Slots:GetChildren()) do
         local handle = slot:FindFirstChild("Handle")
@@ -124,11 +133,9 @@ task.spawn(function()
 
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local tool = char and char:FindFirstChildOfClass("Tool")
-
         if not hrp then continue end
 
-        if not tool then
+        if not EstaSegurando() then
             StatusLabel.Text = "Segure um brainrot na mao!"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
             continue
@@ -157,16 +164,15 @@ task.spawn(function()
         pcall(function()
             -- teleporta instantâneo pro slot
             hrp.CFrame = handle.CFrame * CFrame.new(0, 2, 0)
-            -- sem task.wait pra ser o mais rápido possível
             prompt.HoldDuration = 0
             fireproximityprompt(prompt)
             task.wait(0.05)
-            -- volta imediatamente pra posição original
+            -- volta imediatamente
             hrp.CFrame = posOriginal
         end)
 
         StatusLabel.Text = "Pronto! Voltou ao lugar."
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
-        task.wait(0.5)
+        task.wait(0.3)
     end
 end)
