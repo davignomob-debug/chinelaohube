@@ -86,11 +86,10 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Label tecla E
 local KeyLabel = Instance.new("TextLabel", Main)
 KeyLabel.Size = UDim2.new(0.92, 0, 0, 18)
 KeyLabel.Position = UDim2.new(0.04, 0, 0, 66)
-KeyLabel.Text = "[E] = Posicionar brainrot manualmente"
+KeyLabel.Text = "Aperta LIGAR e segure um brainrot!"
 KeyLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
 KeyLabel.BackgroundTransparency = 1
 KeyLabel.Font = Enum.Font.Gotham
@@ -133,30 +132,30 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- // FUNÇÃO DE COLOCAR BRAINROT (ultra rápido)
+-- // FUNÇÃO PRINCIPAL
 local function ColocarBrainrot()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not hrp then return end
 
     if not EstaSegurando() then
         StatusLabel.Text = "Segure um brainrot na mao!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        return false
+        return
     end
 
     local base = GetMinhaBase()
     if not base then
         StatusLabel.Text = "Base nao encontrada!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        return false
+        return
     end
 
     local prompt, handle = GetSlotVazio(base)
     if not prompt then
         StatusLabel.Text = "Sem slots vazios!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-        return false
+        return
     end
 
     StatusLabel.Text = "Colocando brainrot..."
@@ -166,32 +165,37 @@ local function ColocarBrainrot()
 
     pcall(function()
         prompt.HoldDuration = 0
-        -- Teleporte INSTANTÂNEO pro slot
+
+        -- 1) Teleporta pro slot instantaneamente
         hrp.CFrame = handle.CFrame * CFrame.new(0, 0, 2)
+        task.wait(0.05)
+
+        -- 2) Tenta fireproximityprompt primeiro
         fireproximityprompt(prompt)
-        -- Retorno INSTANTÂNEO (sem nenhum wait)
+        task.wait(0.05)
+
+        -- 3) Simula tecla E como backup
+        if keypress then
+            keypress(0x45)
+            task.wait(0.05)
+            keyrelease(0x45)
+            task.wait(0.05)
+        end
+
+        -- 4) Volta instantaneamente
         hrp.CFrame = posOriginal
     end)
 
     StatusLabel.Text = "Pronto!"
     StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
-    return true
 end
 
--- // TECLA E - posicionar manualmente
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.E then
-        ColocarBrainrot()
-    end
-end)
-
--- // LOOP PRINCIPAL (auto)
+-- // LOOP PRINCIPAL
 task.spawn(function()
     while true do
-        task.wait(0.05) -- loop bem mais rápido
+        task.wait(0.05)
         if not Ativo then continue end
         ColocarBrainrot()
-        task.wait(0.05) -- delay mínimo entre tentativas
+        task.wait(0.1)
     end
 end)
