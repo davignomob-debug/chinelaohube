@@ -8,7 +8,6 @@ sg.Name = "AutoPlace_Brainrot"
 local Ativo = false
 local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
 
--- // CHECA SE ESTÁ SEGURANDO BRAINROT (pasta Grabbing do char)
 local function EstaSegurando()
     local char = LocalPlayer.Character
     if not char then return false end
@@ -17,7 +16,6 @@ local function EstaSegurando()
     return #grabbing:GetChildren() > 0
 end
 
--- // ACHA SUA BASE PELO USERID
 local function GetMinhaBase()
     for _, base in pairs(workspace.Server.Bases:GetChildren()) do
         local ownerId = base:FindFirstChild("OwnerId")
@@ -28,7 +26,6 @@ local function GetMinhaBase()
     return nil
 end
 
--- // ACHA SLOT VAZIO (tem PlacePrompt = slot disponivel)
 local function GetSlotVazio(base)
     for _, slot in pairs(base.Slots:GetChildren()) do
         local handle = slot:FindFirstChild("Handle")
@@ -44,8 +41,8 @@ end
 
 -- // UI
 local Main = Instance.new("Frame", sg)
-Main.Size = UDim2.fromOffset(280, 130)
-Main.Position = UDim2.new(0.5, -140, 0.7, 0)
+Main.Size = UDim2.fromOffset(300, 155)
+Main.Position = UDim2.new(0.5, -150, 0.7, 0)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
@@ -89,9 +86,20 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
+-- Label tecla E
+local KeyLabel = Instance.new("TextLabel", Main)
+KeyLabel.Size = UDim2.new(0.92, 0, 0, 18)
+KeyLabel.Position = UDim2.new(0.04, 0, 0, 66)
+KeyLabel.Text = "[E] = Posicionar brainrot manualmente"
+KeyLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
+KeyLabel.BackgroundTransparency = 1
+KeyLabel.Font = Enum.Font.Gotham
+KeyLabel.TextSize = 12
+KeyLabel.TextXAlignment = Enum.TextXAlignment.Left
+
 local Toggle = Instance.new("TextButton", Main)
 Toggle.Size = UDim2.new(0.92, 0, 0, 40)
-Toggle.Position = UDim2.new(0.04, 0, 0, 70)
+Toggle.Position = UDim2.new(0.04, 0, 0, 90)
 Toggle.Text = "AUTO PLACE: OFF"
 Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Toggle.TextColor3 = Color3.new(1, 1, 1)
@@ -106,7 +114,7 @@ Toggle.MouseButton1Click:Connect(function()
     Toggle.BackgroundColor3 = Ativo and Color3.fromRGB(0, 100, 50) or Color3.fromRGB(35, 35, 35)
 end)
 
--- ARRASTAR
+-- // ARRASTAR
 TopBar.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true dragStart = i.Position startPos = Main.Position
@@ -125,53 +133,65 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- // LOOP PRINCIPAL
+-- // FUNÇÃO DE COLOCAR BRAINROT (ultra rápido)
+local function ColocarBrainrot()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    if not EstaSegurando() then
+        StatusLabel.Text = "Segure um brainrot na mao!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return false
+    end
+
+    local base = GetMinhaBase()
+    if not base then
+        StatusLabel.Text = "Base nao encontrada!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return false
+    end
+
+    local prompt, handle = GetSlotVazio(base)
+    if not prompt then
+        StatusLabel.Text = "Sem slots vazios!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+        return false
+    end
+
+    StatusLabel.Text = "Colocando brainrot..."
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+
+    local posOriginal = hrp.CFrame
+
+    pcall(function()
+        prompt.HoldDuration = 0
+        -- Teleporte INSTANTÂNEO pro slot
+        hrp.CFrame = handle.CFrame * CFrame.new(0, 0, 2)
+        fireproximityprompt(prompt)
+        -- Retorno INSTANTÂNEO (sem nenhum wait)
+        hrp.CFrame = posOriginal
+    end)
+
+    StatusLabel.Text = "Pronto!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+    return true
+end
+
+-- // TECLA E - posicionar manualmente
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        ColocarBrainrot()
+    end
+end)
+
+-- // LOOP PRINCIPAL (auto)
 task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(0.05) -- loop bem mais rápido
         if not Ativo then continue end
-
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then continue end
-
-        if not EstaSegurando() then
-            StatusLabel.Text = "Segure um brainrot na mao!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            continue
-        end
-
-        local base = GetMinhaBase()
-        if not base then
-            StatusLabel.Text = "Base nao encontrada!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            continue
-        end
-
-        local prompt, handle = GetSlotVazio(base)
-        if not prompt then
-            StatusLabel.Text = "Sem slots vazios!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-            continue
-        end
-
-        StatusLabel.Text = "Colocando brainrot..."
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-
-        local posOriginal = hrp.CFrame
-
-        pcall(function()
-            -- teleporta pra frente do slot (3 studs de distancia)
-            local slotCF = handle.CFrame
-            hrp.CFrame = slotCF * CFrame.new(0, 0, 3)
-            prompt.HoldDuration = 0
-            fireproximityprompt(prompt)
-            task.wait(0.05)
-            hrp.CFrame = posOriginal
-        end)
-
-        StatusLabel.Text = "Pronto! Voltou ao lugar."
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
-        task.wait(0.3)
+        ColocarBrainrot()
+        task.wait(0.05) -- delay mínimo entre tentativas
     end
 end)
