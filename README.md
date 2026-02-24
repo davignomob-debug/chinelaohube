@@ -1,115 +1,182 @@
-local Library = {}
-
--- // SERVIÇOS
-local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
--- // CORES TECH PERFECT
-local Colors = {
-    Main = Color3.fromRGB(10, 10, 10),
-    Side = Color3.fromRGB(15, 15, 15),
-    Neon = Color3.fromRGB(0, 255, 0),
-    Text = Color3.fromRGB(255, 255, 255),
-    DarkText = Color3.fromRGB(150, 150, 150)
-}
+local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("CoreGui"))
+sg.Name = "PlaceBrainrot"
 
--- // CRIAR UI PRINCIPAL
-local ScreenGui = Instance.new("ScreenGui", (gethui and gethui()) or CoreGui)
-ScreenGui.Name = "TechPerfect_Clone"
+local Ativo = false
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPos = nil
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.fromOffset(550, 350)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -175)
-MainFrame.BackgroundColor3 = Colors.Main
-MainFrame.BorderSizePixel = 0
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-
--- Borda Neon
-local Stroke = Instance.new("UIStroke", MainFrame)
-Stroke.Color = Colors.Neon
-Stroke.Thickness = 1.5
-
--- // BARRA LATERAL (SIDEBAR)
-local Sidebar = Instance.new("Frame", MainFrame)
-Sidebar.Size = UDim2.new(0, 150, 1, 0)
-Sidebar.BackgroundColor3 = Colors.Side
-Sidebar.BorderSizePixel = 0
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 8)
-
--- Logo e Título
-local Title = Instance.new("TextLabel", Sidebar)
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Position = UDim2.new(0, 10, 0, 10)
-Title.Text = "Tech Perfect"
-Title.TextColor3 = Colors.Neon
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
--- Container de Abas
-local TabContainer = Instance.new("Frame", Sidebar)
-TabContainer.Size = UDim2.new(1, -20, 1, -100)
-TabContainer.Position = UDim2.new(0, 10, 0, 60)
-TabContainer.BackgroundTransparency = 1
-local Layout = Instance.new("UIListLayout", TabContainer)
-Layout.Padding = UDim.new(0, 5)
-
--- Função para Criar Aba
-local function CreateTab(name, active)
-    local Tab = Instance.new("TextButton", TabContainer)
-    Tab.Size = UDim2.new(1, 0, 0, 35)
-    Tab.BackgroundColor3 = active and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(20, 20, 20)
-    Tab.Text = name
-    Tab.TextColor3 = active and Colors.Neon or Colors.DarkText
-    Tab.Font = Enum.Font.GothamMedium
-    Tab.TextSize = 13
-    Instance.new("UICorner", Tab)
-    return Tab
+-- // ACHA SUA BASE PELO USERID
+local function GetMinhaBase()
+    for _, base in pairs(workspace.Server.Bases:GetChildren()) do
+        local ownerId = base:FindFirstChild("OwnerId")
+        if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
+            return base
+        end
+    end
+    return nil
 end
 
-CreateTab("Player Mods", true)
-CreateTab("Auto Gap Tween", false)
-CreateTab("Upgrades", false)
-CreateTab("Misc", false)
+-- // ACHA SLOT VAZIO NA SUA BASE
+local function GetSlotVazio(base)
+    for _, slot in pairs(base.Slots:GetChildren()) do
+        local handle = slot:FindFirstChild("Handle")
+        if handle then
+            local prompt = handle:FindFirstChildOfClass("ProximityPrompt")
+            if prompt and prompt.ActionText:lower() == "place" then
+                return prompt, handle
+            end
+        end
+    end
+    return nil, nil
+end
 
--- // AREA DE CONTEÚDO (RIGHT SIDE)
-local Content = Instance.new("ScrollingFrame", MainFrame)
-Content.Size = UDim2.new(1, -170, 1, -20)
-Content.Position = UDim2.new(0, 160, 0, 10)
-Content.BackgroundTransparency = 1
-Content.CanvasSize = UDim2.new(0, 0, 2, 0)
-Content.ScrollBarThickness = 2
+-- // FRAME PRINCIPAL
+local Main = Instance.new("Frame", sg)
+Main.Size = UDim2.fromOffset(260, 120)
+Main.Position = UDim2.new(0.5, -130, 0.7, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 0
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
--- Exemplo de Seção: Fly Modifier
-local FlySection = Instance.new("Frame", Content)
-FlySection.Size = UDim2.new(0.95, 0, 0, 150)
-FlySection.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Instance.new("UICorner", FlySection)
-Instance.new("UIStroke", FlySection).Color = Color3.fromRGB(30, 30, 30)
+local stroke = Instance.new("UIStroke", Main)
+stroke.Color = Color3.fromRGB(0, 255, 127)
+stroke.Thickness = 2
 
-local SectionTitle = Instance.new("TextLabel", FlySection)
-SectionTitle.Size = UDim2.new(1, -20, 0, 30)
-SectionTitle.Position = UDim2.new(0, 10, 0, 5)
-SectionTitle.Text = "Fly Modifier"
-SectionTitle.TextColor3 = Colors.Neon
-SectionTitle.BackgroundTransparency = 1
-SectionTitle.Font = Enum.Font.GothamBold
-SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+-- // TOPBAR
+local TopBar = Instance.new("Frame", Main)
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundTransparency = 1
 
--- // SISTEMA DE ARRASTAR
-local dragging, dragInput, dragStart, startPos
-MainFrame.InputBegan:Connect(function(input)
+-- // TÍTULO
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Text = "AUTO PLACE BRAINROT"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+
+-- // BOTÃO FECHAR
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.fromOffset(28, 28)
+CloseBtn.Position = UDim2.new(1, -33, 0, 6)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.BorderSizePixel = 0
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
+CloseBtn.MouseEnter:Connect(function()
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+end)
+CloseBtn.MouseLeave:Connect(function()
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+end)
+CloseBtn.MouseButton1Click:Connect(function()
+    Ativo = false
+    sg:Destroy()
+end)
+
+-- // STATUS
+local StatusLabel = Instance.new("TextLabel", Main)
+StatusLabel.Size = UDim2.new(0.92, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0.04, 0, 0, 45)
+StatusLabel.Text = "Segure um brainrot na mão!"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 13
+
+-- // BOTÃO ATIVAR
+local Toggle = Instance.new("TextButton", Main)
+Toggle.Size = UDim2.new(0.92, 0, 0, 38)
+Toggle.Position = UDim2.new(0.04, 0, 0, 70)
+Toggle.Text = "AUTO PLACE: OFF"
+Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Toggle.TextColor3 = Color3.new(1, 1, 1)
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 16
+Toggle.BorderSizePixel = 0
+Instance.new("UICorner", Toggle)
+
+Toggle.MouseButton1Click:Connect(function()
+    Ativo = not Ativo
+    Toggle.Text = Ativo and "AUTO PLACE: ON" or "AUTO PLACE: OFF"
+    Toggle.BackgroundColor3 = Ativo and Color3.fromRGB(0, 100, 50) or Color3.fromRGB(35, 35, 35)
+end)
+
+-- // ARRASTAR
+TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+TopBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+    if input == dragInput and dragging then
         local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- // LOOP PRINCIPAL
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if not Ativo then continue end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local tool = char and char:FindFirstChildOfClass("Tool")
+
+        if not tool then
+            StatusLabel.Text = "Segure um brainrot na mão!"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            continue
+        end
+
+        local base = GetMinhaBase()
+        if not base then
+            StatusLabel.Text = "Base não encontrada!"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            continue
+        end
+
+        local prompt, handle = GetSlotVazio(base)
+        if not prompt then
+            StatusLabel.Text = "Sem slots vazios!"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+            continue
+        end
+
+        StatusLabel.Text = "Colocando na base..."
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+
+        pcall(function()
+            hrp.CFrame = handle.CFrame * CFrame.new(0, 2, 0)
+            task.wait(0.1)
+            prompt.HoldDuration = 0
+            fireproximityprompt(prompt)
+            task.wait(0.3)
+        end)
+    end
 end)
