@@ -8,7 +8,7 @@ sg.Name = "AutoPlace_Brainrot"
 local Ativo = false
 local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
 
--- // CHECA SE ESTÁ SEGURANDO BRAINROT (fica na pasta Grabbing do char)
+-- // CHECA SE ESTÁ SEGURANDO BRAINROT (pasta Grabbing do char)
 local function EstaSegurando()
     local char = LocalPlayer.Character
     if not char then return false end
@@ -28,13 +28,13 @@ local function GetMinhaBase()
     return nil
 end
 
--- // ACHA SLOT VAZIO NA SUA BASE
+-- // ACHA SLOT VAZIO (tem PlacePrompt = slot disponivel)
 local function GetSlotVazio(base)
     for _, slot in pairs(base.Slots:GetChildren()) do
         local handle = slot:FindFirstChild("Handle")
         if handle then
-            local prompt = handle:FindFirstChildOfClass("ProximityPrompt")
-            if prompt and prompt.ActionText:lower():find("place") then
+            local prompt = handle:FindFirstChild("PlacePrompt")
+            if prompt then
                 return prompt, handle
             end
         end
@@ -158,16 +158,15 @@ task.spawn(function()
         StatusLabel.Text = "Colocando brainrot..."
         StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 
-        -- salva posição original
         local posOriginal = hrp.CFrame
 
         pcall(function()
-            -- teleporta instantâneo pro slot
-            hrp.CFrame = handle.CFrame * CFrame.new(0, 2, 0)
+            -- teleporta pra frente do slot (3 studs de distancia)
+            local slotCF = handle.CFrame
+            hrp.CFrame = slotCF * CFrame.new(0, 0, 3)
             prompt.HoldDuration = 0
             fireproximityprompt(prompt)
             task.wait(0.05)
-            -- volta imediatamente
             hrp.CFrame = posOriginal
         end)
 
