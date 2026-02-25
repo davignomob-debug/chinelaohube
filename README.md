@@ -17,7 +17,11 @@ local function EstaSegurando()
 end
 
 local function GetMinhaBase()
-    for _, base in pairs(workspace.Server.Bases:GetChildren()) do
+    local ok, server = pcall(function() return workspace.Server end)
+    if not ok or not server then return nil end
+    local bases = server:FindFirstChild("Bases")
+    if not bases then return nil end
+    for _, base in pairs(bases:GetChildren()) do
         local ownerId = base:FindFirstChild("OwnerId")
         if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
             return base
@@ -103,7 +107,7 @@ Toggle.MouseButton1Click:Connect(function()
     Toggle.BackgroundColor3 = Ativo and Color3.fromRGB(0, 100, 50) or Color3.fromRGB(35, 35, 35)
 end)
 
--- ARRASTAR
+-- // ARRASTAR
 TopBar.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true dragStart = i.Position startPos = Main.Position
@@ -122,52 +126,60 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
+-- // FUNÇÃO PRINCIPAL
+local function ColocarBrainrot()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if not EstaSegurando() then
+        StatusLabel.Text = "Segure um brainrot na mao!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+
+    local base = GetMinhaBase()
+    if not base then
+        StatusLabel.Text = "Aguardando base..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+        return
+    end
+
+    local prompt, handle = GetSlotVazio(base)
+    if not prompt then
+        StatusLabel.Text = "Sem slots vazios!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+        return
+    end
+
+    StatusLabel.Text = "Colocando brainrot..."
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+
+    local posOriginal = hrp.CFrame
+
+    pcall(function()
+        prompt.HoldDuration = 0
+        -- teleporta em cima do handle no mesmo Y do personagem
+        hrp.CFrame = CFrame.new(handle.Position.X, hrp.Position.Y, handle.Position.Z)
+        task.wait(0.08)
+        fireproximityprompt(prompt)
+        task.wait(0.08)
+        -- volta instantaneamente
+        hrp.CFrame = posOriginal
+    end)
+
+    StatusLabel.Text = "Pronto!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+end
+
 -- // LOOP PRINCIPAL
 task.spawn(function()
+    repeat task.wait(0.5) until pcall(function() return workspace.Server.Bases end)
+
     while true do
         task.wait(0.05)
         if not Ativo then continue end
-
-        if not EstaSegurando() then
-            StatusLabel.Text = "Segure um brainrot na mao!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            task.wait(0.3)
-            continue
-        end
-
-        local base = GetMinhaBase()
-        if not base then
-            StatusLabel.Text = "Base nao encontrada!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            task.wait(0.3)
-            continue
-        end
-
-        local prompt, handle = GetSlotVazio(base)
-        if not prompt then
-            StatusLabel.Text = "Sem slots vazios!"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-            task.wait(0.3)
-            continue
-        end
-
-        StatusLabel.Text = "Colocando brainrot..."
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-
-        pcall(function()
-            prompt.HoldDuration = 0
-            fireproximityprompt(prompt)
-        end)
-
-        -- espera o slot ser preenchido antes de tentar o próximo
-        -- (aguarda o PlacePrompt sumir do handle)
-        local timeout = 0
-        repeat
-            task.wait(0.05)
-            timeout += 0.05
-        until not handle:FindFirstChild("PlacePrompt") or timeout >= 2
-
-        StatusLabel.Text = "Pronto!"
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+        ColocarBrainrot()
+        task.wait(0.1)
     end
 end)
