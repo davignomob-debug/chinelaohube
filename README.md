@@ -17,7 +17,11 @@ local function EstaSegurando()
 end
 
 local function GetMinhaBase()
-    for _, base in pairs(workspace.Server.Bases:GetChildren()) do
+    local server = workspace:FindFirstChild("Server")
+    if not server then return nil end
+    local bases = server:FindFirstChild("Bases")
+    if not bases then return nil end
+    for _, base in pairs(bases:GetChildren()) do
         local ownerId = base:FindFirstChild("OwnerId")
         if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
             return base
@@ -122,7 +126,7 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- // FUNÇÃO PRINCIPAL - sem teleporte, só fire direto
+-- // FUNÇÃO PRINCIPAL - sem teleporte, fire direto
 local function ColocarBrainrot()
     if not EstaSegurando() then
         StatusLabel.Text = "Segure um brainrot na mao!"
@@ -132,8 +136,8 @@ local function ColocarBrainrot()
 
     local base = GetMinhaBase()
     if not base then
-        StatusLabel.Text = "Base nao encontrada!"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        StatusLabel.Text = "Aguardando base carregar..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
         return
     end
 
@@ -149,7 +153,6 @@ local function ColocarBrainrot()
 
     pcall(function()
         prompt.HoldDuration = 0
-        -- Dispara o prompt de qualquer lugar sem teleportar
         fireproximityprompt(prompt)
     end)
 
@@ -159,6 +162,16 @@ end
 
 -- // LOOP PRINCIPAL
 task.spawn(function()
+    -- espera o jogo carregar direito antes de começar
+    StatusLabel.Text = "Carregando jogo..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+
+    repeat task.wait(0.5) until workspace:FindFirstChild("Server")
+        and workspace.Server:FindFirstChild("Bases")
+
+    StatusLabel.Text = "Pronto pra usar!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+
     while true do
         task.wait(0.05)
         if not Ativo then continue end
