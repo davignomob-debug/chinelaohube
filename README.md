@@ -16,9 +16,10 @@ local function EstaSegurando()
     return #grabbing:GetChildren() > 0
 end
 
+-- // busca a base sempre de novo, funciona em qualquer servidor
 local function GetMinhaBase()
-    local server = workspace:FindFirstChild("Server")
-    if not server then return nil end
+    local ok, server = pcall(function() return workspace.Server end)
+    if not ok or not server then return nil end
     local bases = server:FindFirstChild("Bases")
     if not bases then return nil end
     for _, base in pairs(bases:GetChildren()) do
@@ -126,7 +127,7 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- // FUNÇÃO PRINCIPAL - sem teleporte, fire direto
+-- // FUNÇÃO PRINCIPAL
 local function ColocarBrainrot()
     if not EstaSegurando() then
         StatusLabel.Text = "Segure um brainrot na mao!"
@@ -136,7 +137,7 @@ local function ColocarBrainrot()
 
     local base = GetMinhaBase()
     if not base then
-        StatusLabel.Text = "Aguardando base carregar..."
+        StatusLabel.Text = "Aguardando base..."
         StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
         return
     end
@@ -162,15 +163,10 @@ end
 
 -- // LOOP PRINCIPAL
 task.spawn(function()
-    -- espera o jogo carregar direito antes de começar
-    StatusLabel.Text = "Carregando jogo..."
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
-
-    repeat task.wait(0.5) until workspace:FindFirstChild("Server")
-        and workspace.Server:FindFirstChild("Bases")
-
-    StatusLabel.Text = "Pronto pra usar!"
-    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+    -- espera o servidor carregar antes de começar
+    repeat task.wait(0.5) until pcall(function()
+        return workspace.Server.Bases
+    end)
 
     while true do
         task.wait(0.05)
