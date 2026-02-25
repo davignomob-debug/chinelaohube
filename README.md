@@ -134,20 +134,21 @@ local function AtualizarLista()
 
     local count = 0
     for _, base in pairs(bases) do
-        local ownerId = base:FindFirstChild("OwnerId")
+        -- mostra TODAS as bases sem filtrar
         local nomeBase = base.Name
+        local ownerId = base:FindFirstChild("OwnerId")
         local dono = ownerId and tostring(ownerId.Value) or ""
-        if dono == "" then continue end -- pula bases sem dono (como Base5)
-
-        local nomePlayer = "ID:" .. dono
-        local p = Players:GetPlayerByUserId(tonumber(dono))
-        if p then nomePlayer = p.Name end
-
         local ehSua = dono == tostring(LocalPlayer.UserId)
+
+        local nomePlayer = ""
+        if dono ~= "" then
+            local p = Players:GetPlayerByUserId(tonumber(dono))
+            nomePlayer = p and p.Name or ("ID:"..dono)
+        end
 
         local btn = Instance.new("TextButton", ScrollFrame)
         btn.Size = UDim2.new(1, 0, 0, 36)
-        btn.Text = (ehSua and "★ " or "") .. nomeBase .. " | " .. nomePlayer
+        btn.Text = (ehSua and "★ " or "") .. nomeBase .. (nomePlayer ~= "" and (" | "..nomePlayer) or "")
         btn.TextColor3 = ehSua and Color3.fromRGB(0, 255, 127) or Color3.new(1,1,1)
         btn.BackgroundColor3 = ehSua and Color3.fromRGB(0, 60, 30) or Color3.fromRGB(35, 35, 35)
         btn.Font = Enum.Font.Gotham
@@ -157,11 +158,9 @@ local function AtualizarLista()
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
         local nomeCapturado = nomeBase
-        local nomePlayerCapturado = nomePlayer
         btn.MouseButton1Click:Connect(function()
-            -- salva o NOME da base, nao o objeto
             BaseSelecionadaNome = nomeCapturado
-            StatusLabel.Text = "Base: " .. nomeCapturado .. " (" .. nomePlayerCapturado .. ")"
+            StatusLabel.Text = "Base selecionada: " .. nomeCapturado
             StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
             ListFrame.Visible = false
         end)
@@ -236,7 +235,6 @@ local function ColocarBrainrot()
         return
     end
 
-    -- busca a base pelo nome toda vez (funciona em qualquer servidor)
     local base = GetBasePorNome(BaseSelecionadaNome)
     if not base then
         StatusLabel.Text = "Base sumiu! Selecione novamente."
