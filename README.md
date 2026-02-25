@@ -134,7 +134,6 @@ local function AtualizarLista()
 
     local count = 0
     for _, base in pairs(bases) do
-        -- mostra TODAS as bases sem filtrar
         local nomeBase = base.Name
         local ownerId = base:FindFirstChild("OwnerId")
         local dono = ownerId and tostring(ownerId.Value) or ""
@@ -160,7 +159,7 @@ local function AtualizarLista()
         local nomeCapturado = nomeBase
         btn.MouseButton1Click:Connect(function()
             BaseSelecionadaNome = nomeCapturado
-            StatusLabel.Text = "Base selecionada: " .. nomeCapturado
+            StatusLabel.Text = "Base: " .. nomeCapturado
             StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
             ListFrame.Visible = false
         end)
@@ -258,6 +257,7 @@ local function ColocarBrainrot()
 
     pcall(function()
         prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = 9999 -- burla distancia!
         fireproximityprompt(prompt)
     end)
 
