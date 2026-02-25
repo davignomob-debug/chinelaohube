@@ -6,6 +6,7 @@ local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("C
 sg.Name = "AutoPlace_Brainrot"
 
 local Ativo = false
+local BaseSelecionada = nil
 local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
 
 local function EstaSegurando()
@@ -14,21 +15,6 @@ local function EstaSegurando()
     local grabbing = char:FindFirstChild("Grabbing")
     if not grabbing then return false end
     return #grabbing:GetChildren() > 0
-end
-
-local function GetMinhaBase()
-    -- busca sempre do zero, funciona em qualquer servidor
-    local ok, bases = pcall(function()
-        return workspace.Server.Bases
-    end)
-    if not ok or not bases then return nil end
-    for _, base in pairs(bases:GetChildren()) do
-        local ownerId = base:FindFirstChild("OwnerId")
-        if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
-            return base
-        end
-    end
-    return nil
 end
 
 local function GetSlotVazio(base)
@@ -44,9 +30,9 @@ local function GetSlotVazio(base)
     return nil, nil
 end
 
--- // UI
+-- // UI PRINCIPAL
 local Main = Instance.new("Frame", sg)
-Main.Size = UDim2.fromOffset(300, 135)
+Main.Size = UDim2.fromOffset(300, 200)
 Main.Position = UDim2.new(0.5, -150, 0.7, 0)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
@@ -84,16 +70,107 @@ CloseBtn.MouseButton1Click:Connect(function() Ativo = false sg:Destroy() end)
 local StatusLabel = Instance.new("TextLabel", Main)
 StatusLabel.Size = UDim2.new(0.92, 0, 0, 20)
 StatusLabel.Position = UDim2.new(0.04, 0, 0, 44)
-StatusLabel.Text = "Aguardando..."
-StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.Text = "Selecione sua base abaixo!"
+StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
+-- // BOTAO SELECIONAR BASE
+local SelectBtn = Instance.new("TextButton", Main)
+SelectBtn.Size = UDim2.new(0.92, 0, 0, 30)
+SelectBtn.Position = UDim2.new(0.04, 0, 0, 68)
+SelectBtn.Text = "Selecionar Base"
+SelectBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 160)
+SelectBtn.TextColor3 = Color3.new(1, 1, 1)
+SelectBtn.Font = Enum.Font.GothamBold
+SelectBtn.TextSize = 13
+SelectBtn.BorderSizePixel = 0
+Instance.new("UICorner", SelectBtn)
+
+-- // LISTA DE BASES (dropdown)
+local ListFrame = Instance.new("Frame", sg)
+ListFrame.Size = UDim2.fromOffset(260, 200)
+ListFrame.Position = UDim2.new(0.5, -130, 0.5, -100)
+ListFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ListFrame.BorderSizePixel = 0
+ListFrame.Visible = false
+ListFrame.ZIndex = 10
+Instance.new("UICorner", ListFrame).CornerRadius = UDim.new(0, 8)
+local listStroke = Instance.new("UIStroke", ListFrame)
+listStroke.Color = Color3.fromRGB(0, 200, 255)
+listStroke.Thickness = 2
+
+local ListTitle = Instance.new("TextLabel", ListFrame)
+ListTitle.Size = UDim2.new(1, 0, 0, 30)
+ListTitle.Text = "Escolha sua base:"
+ListTitle.TextColor3 = Color3.new(1,1,1)
+ListTitle.BackgroundTransparency = 1
+ListTitle.Font = Enum.Font.GothamBold
+ListTitle.TextSize = 14
+ListTitle.ZIndex = 10
+
+local ScrollFrame = Instance.new("ScrollingFrame", ListFrame)
+ScrollFrame.Size = UDim2.new(1, -10, 1, -35)
+ScrollFrame.Position = UDim2.new(0, 5, 0, 32)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 4
+ScrollFrame.ZIndex = 10
+Instance.new("UIListLayout", ScrollFrame).Padding = UDim.new(0, 4)
+
+local function AtualizarLista()
+    for _, v in pairs(ScrollFrame:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
+
+    local ok, bases = pcall(function() return workspace.Server.Bases:GetChildren() end)
+    if not ok or not bases then return end
+
+    for _, base in pairs(bases) do
+        local ownerId = base:FindFirstChild("OwnerId")
+        local nomeBase = base.Name
+        local dono = ownerId and ownerId.Value or "?"
+
+        -- tenta pegar o nome do player dono
+        local nomePlayer = "ID:" .. tostring(dono)
+        local p = Players:GetPlayerByUserId(tonumber(dono))
+        if p then nomePlayer = p.Name end
+
+        -- destaca se for sua base
+        local ehSua = tostring(dono) == tostring(LocalPlayer.UserId)
+
+        local btn = Instance.new("TextButton", ScrollFrame)
+        btn.Size = UDim2.new(1, 0, 0, 36)
+        btn.Text = (ehSua and "★ " or "") .. nomeBase .. " | " .. nomePlayer
+        btn.TextColor3 = ehSua and Color3.fromRGB(0, 255, 127) or Color3.new(1,1,1)
+        btn.BackgroundColor3 = ehSua and Color3.fromRGB(0, 60, 30) or Color3.fromRGB(35, 35, 35)
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 12
+        btn.BorderSizePixel = 0
+        btn.ZIndex = 10
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+        btn.MouseButton1Click:Connect(function()
+            BaseSelecionada = base
+            StatusLabel.Text = "Base: " .. nomeBase .. " (" .. nomePlayer .. ")"
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+            ListFrame.Visible = false
+        end)
+    end
+
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, #bases * 40)
+end
+
+SelectBtn.MouseButton1Click:Connect(function()
+    AtualizarLista()
+    ListFrame.Visible = not ListFrame.Visible
+end)
+
+-- // TOGGLE
 local Toggle = Instance.new("TextButton", Main)
 Toggle.Size = UDim2.new(0.92, 0, 0, 40)
-Toggle.Position = UDim2.new(0.04, 0, 0, 70)
+Toggle.Position = UDim2.new(0.04, 0, 0, 105)
 Toggle.Text = "AUTO PLACE: OFF"
 Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Toggle.TextColor3 = Color3.new(1, 1, 1)
@@ -103,6 +180,11 @@ Toggle.BorderSizePixel = 0
 Instance.new("UICorner", Toggle)
 
 Toggle.MouseButton1Click:Connect(function()
+    if not BaseSelecionada then
+        StatusLabel.Text = "Selecione sua base primeiro!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
     Ativo = not Ativo
     Toggle.Text = Ativo and "AUTO PLACE: ON" or "AUTO PLACE: OFF"
     Toggle.BackgroundColor3 = Ativo and Color3.fromRGB(0, 100, 50) or Color3.fromRGB(35, 35, 35)
@@ -135,14 +217,16 @@ local function ColocarBrainrot()
         return
     end
 
-    local base = GetMinhaBase()
-    if not base then
-        StatusLabel.Text = "Aguardando base..."
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+    if not BaseSelecionada or not BaseSelecionada.Parent then
+        StatusLabel.Text = "Selecione sua base!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        Ativo = false
+        Toggle.Text = "AUTO PLACE: OFF"
+        Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         return
     end
 
-    local prompt, handle = GetSlotVazio(base)
+    local prompt, handle = GetSlotVazio(BaseSelecionada)
     if not prompt then
         StatusLabel.Text = "Sem slots vazios!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
@@ -163,9 +247,6 @@ end
 
 -- // LOOP PRINCIPAL
 task.spawn(function()
-    -- espera o servidor carregar
-    repeat task.wait(0.5) until pcall(function() return workspace.Server.Bases end)
-
     while true do
         task.wait(0.05)
         if not Ativo then continue end
