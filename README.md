@@ -12,9 +12,10 @@ local startPos = nil
 
 local function GetMinhaBase()
     for _, base in pairs(workspace.Server.Bases:GetChildren()) do
-        local ownerId = base:FindFirstChild("OwnerId")
-        if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
-            return base
+        for _, child in pairs(base:GetChildren()) do
+            if child.Name == "OwnerId" and tostring(child.Value) == tostring(LocalPlayer.UserId) then
+                return base
+            end
         end
     end
     return nil
@@ -25,7 +26,7 @@ local function GetSlotVazio(base)
         local handle = slot:FindFirstChild("Handle")
         if handle then
             local prompt = handle:FindFirstChildOfClass("ProximityPrompt")
-            if prompt and prompt.ActionText:lower() == "place" then
+            if prompt then
                 return prompt
             end
         end
