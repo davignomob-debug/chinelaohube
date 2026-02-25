@@ -26,39 +26,22 @@ local function GetMinhaBase()
     return nil
 end
 
--- Só pega slot vazio mais próximo do personagem (mesmo andar)
 local function GetSlotVazio(base)
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hrpY = hrp and hrp.Position.Y or 0
-
-    local melhorPrompt, melhorHandle, menorDist = nil, nil, math.huge
-
     for _, slot in pairs(base.Slots:GetChildren()) do
         local handle = slot:FindFirstChild("Handle")
         if handle then
             local prompt = handle:FindFirstChild("PlacePrompt")
             if prompt then
-                local slotY = handle.Position.Y
-                -- só considera slots com Y próximo do personagem (±15 studs)
-                if math.abs(slotY - hrpY) < 15 then
-                    local dist = (handle.Position - hrp.Position).Magnitude
-                    if dist < menorDist then
-                        menorDist = dist
-                        melhorPrompt = prompt
-                        melhorHandle = handle
-                    end
-                end
+                return prompt, handle
             end
         end
     end
-
-    return melhorPrompt, melhorHandle
+    return nil, nil
 end
 
 -- // UI
 local Main = Instance.new("Frame", sg)
-Main.Size = UDim2.fromOffset(300, 155)
+Main.Size = UDim2.fromOffset(300, 135)
 Main.Position = UDim2.new(0.5, -150, 0.7, 0)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
@@ -103,19 +86,9 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local KeyLabel = Instance.new("TextLabel", Main)
-KeyLabel.Size = UDim2.new(0.92, 0, 0, 18)
-KeyLabel.Position = UDim2.new(0.04, 0, 0, 66)
-KeyLabel.Text = "[R] = Teleportar pro slot mais proximo"
-KeyLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
-KeyLabel.BackgroundTransparency = 1
-KeyLabel.Font = Enum.Font.Gotham
-KeyLabel.TextSize = 12
-KeyLabel.TextXAlignment = Enum.TextXAlignment.Left
-
 local Toggle = Instance.new("TextButton", Main)
 Toggle.Size = UDim2.new(0.92, 0, 0, 40)
-Toggle.Position = UDim2.new(0.04, 0, 0, 90)
+Toggle.Position = UDim2.new(0.04, 0, 0, 70)
 Toggle.Text = "AUTO PLACE: OFF"
 Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Toggle.TextColor3 = Color3.new(1, 1, 1)
@@ -149,12 +122,8 @@ UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- // FUNÇÃO PRINCIPAL
+-- // FUNÇÃO PRINCIPAL - sem teleporte, só fire direto
 local function ColocarBrainrot()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
     if not EstaSegurando() then
         StatusLabel.Text = "Segure um brainrot na mao!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -170,7 +139,7 @@ local function ColocarBrainrot()
 
     local prompt, handle = GetSlotVazio(base)
     if not prompt then
-        StatusLabel.Text = "Sem slots vazios no seu andar!"
+        StatusLabel.Text = "Sem slots vazios!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
         return
     end
@@ -178,36 +147,15 @@ local function ColocarBrainrot()
     StatusLabel.Text = "Colocando brainrot..."
     StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 
-    local posOriginal = hrp.CFrame
-    local slotPos = handle.Position
-
     pcall(function()
         prompt.HoldDuration = 0
-        -- Teleporta no chão na frente do slot, mesmo Y do personagem
-        hrp.CFrame = CFrame.new(slotPos.X, hrp.Position.Y, slotPos.Z + 3)
-        task.wait(0.05)
+        -- Dispara o prompt de qualquer lugar sem teleportar
         fireproximityprompt(prompt)
-        task.wait(0.05)
-        if keypress then
-            keypress(0x45)
-            task.wait(0.05)
-            keyrelease(0x45)
-            task.wait(0.05)
-        end
-        hrp.CFrame = posOriginal
     end)
 
     StatusLabel.Text = "Pronto!"
     StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
 end
-
--- // TECLA R = teleportar e colocar
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.R then
-        ColocarBrainrot()
-    end
-end)
 
 -- // LOOP PRINCIPAL
 task.spawn(function()
