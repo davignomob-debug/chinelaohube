@@ -17,10 +17,11 @@ local function EstaSegurando()
 end
 
 local function GetMinhaBase()
-    local ok, server = pcall(function() return workspace.Server end)
-    if not ok or not server then return nil end
-    local bases = server:FindFirstChild("Bases")
-    if not bases then return nil end
+    -- busca sempre do zero, funciona em qualquer servidor
+    local ok, bases = pcall(function()
+        return workspace.Server.Bases
+    end)
+    if not ok or not bases then return nil end
     for _, base in pairs(bases:GetChildren()) do
         local ownerId = base:FindFirstChild("OwnerId")
         if ownerId and tostring(ownerId.Value) == tostring(LocalPlayer.UserId) then
@@ -128,10 +129,6 @@ end)
 
 -- // FUNÇÃO PRINCIPAL
 local function ColocarBrainrot()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
     if not EstaSegurando() then
         StatusLabel.Text = "Segure um brainrot na mao!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -155,17 +152,9 @@ local function ColocarBrainrot()
     StatusLabel.Text = "Colocando brainrot..."
     StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 
-    local posOriginal = hrp.CFrame
-
     pcall(function()
         prompt.HoldDuration = 0
-        -- teleporta em cima do handle no mesmo Y do personagem
-        hrp.CFrame = CFrame.new(handle.Position.X, hrp.Position.Y, handle.Position.Z)
-        task.wait(0.08)
         fireproximityprompt(prompt)
-        task.wait(0.08)
-        -- volta instantaneamente
-        hrp.CFrame = posOriginal
     end)
 
     StatusLabel.Text = "Pronto!"
@@ -174,6 +163,7 @@ end
 
 -- // LOOP PRINCIPAL
 task.spawn(function()
+    -- espera o servidor carregar
     repeat task.wait(0.5) until pcall(function() return workspace.Server.Bases end)
 
     while true do
