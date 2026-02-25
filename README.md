@@ -10,6 +10,14 @@ local dragInput = nil
 local dragStart = nil
 local startPos = nil
 
+local function EstouSegurando()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local grabbing = char:FindFirstChild("Grabbing")
+    if not grabbing then return false end
+    return #grabbing:GetChildren() > 0
+end
+
 local function GetMinhaBase()
     for _, base in pairs(workspace.Server.Bases:GetChildren()) do
         for _, child in pairs(base:GetChildren()) do
@@ -107,10 +115,7 @@ PlaceBtn.MouseLeave:Connect(function()
 end)
 
 PlaceBtn.MouseButton1Click:Connect(function()
-    local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChildOfClass("Tool")
-
-    if not tool then
+    if not EstouSegurando() then
         StatusLabel.Text = "Segure um brainrot na mão!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
