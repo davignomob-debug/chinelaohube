@@ -6,7 +6,7 @@ local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("C
 sg.Name = "AutoPlace_Brainrot"
 
 local Ativo = false
-local BaseSelecionada = nil
+local BaseSelecionadaNome = nil
 local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
 
 local function EstaSegurando()
@@ -15,6 +15,12 @@ local function EstaSegurando()
     local grabbing = char:FindFirstChild("Grabbing")
     if not grabbing then return false end
     return #grabbing:GetChildren() > 0
+end
+
+local function GetBasePorNome(nome)
+    local ok, bases = pcall(function() return workspace.Server.Bases end)
+    if not ok or not bases then return nil end
+    return bases:FindFirstChild(nome)
 end
 
 local function GetSlotVazio(base)
@@ -77,7 +83,6 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- // BOTAO SELECIONAR BASE
 local SelectBtn = Instance.new("TextButton", Main)
 SelectBtn.Size = UDim2.new(0.92, 0, 0, 30)
 SelectBtn.Position = UDim2.new(0.04, 0, 0, 68)
@@ -89,7 +94,7 @@ SelectBtn.TextSize = 13
 SelectBtn.BorderSizePixel = 0
 Instance.new("UICorner", SelectBtn)
 
--- // LISTA DE BASES (dropdown)
+-- // LISTA
 local ListFrame = Instance.new("Frame", sg)
 ListFrame.Size = UDim2.fromOffset(260, 200)
 ListFrame.Position = UDim2.new(0.5, -130, 0.5, -100)
@@ -127,18 +132,18 @@ local function AtualizarLista()
     local ok, bases = pcall(function() return workspace.Server.Bases:GetChildren() end)
     if not ok or not bases then return end
 
+    local count = 0
     for _, base in pairs(bases) do
         local ownerId = base:FindFirstChild("OwnerId")
         local nomeBase = base.Name
-        local dono = ownerId and ownerId.Value or "?"
+        local dono = ownerId and tostring(ownerId.Value) or ""
+        if dono == "" then continue end -- pula bases sem dono (como Base5)
 
-        -- tenta pegar o nome do player dono
-        local nomePlayer = "ID:" .. tostring(dono)
+        local nomePlayer = "ID:" .. dono
         local p = Players:GetPlayerByUserId(tonumber(dono))
         if p then nomePlayer = p.Name end
 
-        -- destaca se for sua base
-        local ehSua = tostring(dono) == tostring(LocalPlayer.UserId)
+        local ehSua = dono == tostring(LocalPlayer.UserId)
 
         local btn = Instance.new("TextButton", ScrollFrame)
         btn.Size = UDim2.new(1, 0, 0, 36)
@@ -151,15 +156,20 @@ local function AtualizarLista()
         btn.ZIndex = 10
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
+        local nomeCapturado = nomeBase
+        local nomePlayerCapturado = nomePlayer
         btn.MouseButton1Click:Connect(function()
-            BaseSelecionada = base
-            StatusLabel.Text = "Base: " .. nomeBase .. " (" .. nomePlayer .. ")"
+            -- salva o NOME da base, nao o objeto
+            BaseSelecionadaNome = nomeCapturado
+            StatusLabel.Text = "Base: " .. nomeCapturado .. " (" .. nomePlayerCapturado .. ")"
             StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
             ListFrame.Visible = false
         end)
+
+        count = count + 1
     end
 
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, #bases * 40)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, count * 40)
 end
 
 SelectBtn.MouseButton1Click:Connect(function()
@@ -180,7 +190,7 @@ Toggle.BorderSizePixel = 0
 Instance.new("UICorner", Toggle)
 
 Toggle.MouseButton1Click:Connect(function()
-    if not BaseSelecionada then
+    if not BaseSelecionadaNome then
         StatusLabel.Text = "Selecione sua base primeiro!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
@@ -217,7 +227,7 @@ local function ColocarBrainrot()
         return
     end
 
-    if not BaseSelecionada or not BaseSelecionada.Parent then
+    if not BaseSelecionadaNome then
         StatusLabel.Text = "Selecione sua base!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         Ativo = false
@@ -226,7 +236,19 @@ local function ColocarBrainrot()
         return
     end
 
-    local prompt, handle = GetSlotVazio(BaseSelecionada)
+    -- busca a base pelo nome toda vez (funciona em qualquer servidor)
+    local base = GetBasePorNome(BaseSelecionadaNome)
+    if not base then
+        StatusLabel.Text = "Base sumiu! Selecione novamente."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        Ativo = false
+        Toggle.Text = "AUTO PLACE: OFF"
+        Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        BaseSelecionadaNome = nil
+        return
+    end
+
+    local prompt, handle = GetSlotVazio(base)
     if not prompt then
         StatusLabel.Text = "Sem slots vazios!"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
