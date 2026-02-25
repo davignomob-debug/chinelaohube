@@ -4,6 +4,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("CoreGui"))
 sg.Name = "PlaceBrainrot"
+sg.ResetOnSpawn = false
 
 local dragging = false
 local dragInput = nil
@@ -48,6 +49,7 @@ Main.Size = UDim2.fromOffset(260, 120)
 Main.Position = UDim2.new(0.5, -130, 0.7, 0)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
+-- IMPORTANTE: ignora a distância do mapa
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
 local stroke = Instance.new("UIStroke", Main)
@@ -141,6 +143,21 @@ PlaceBtn.MouseButton1Click:Connect(function()
         StatusLabel.Text = "Brainrot colocado!"
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
     end)
+end)
+
+-- // LOOP QUE ATUALIZA O STATUS E MOSTRA/OCULTA DEPENDENDO SE ESTÁ SEGURANDO
+task.spawn(function()
+    while task.wait(0.3) do
+        if EstouSegurando() then
+            Main.Visible = true
+            StatusLabel.Text = "Brainrot na mão! Clique pra colocar."
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+        else
+            StatusLabel.Text = "Segure um brainrot na mão!"
+            StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            Main.Visible = true -- sempre visível
+        end
+    end
 end)
 
 -- // ARRASTAR
